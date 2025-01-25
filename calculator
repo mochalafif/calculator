@@ -1,0 +1,170 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QGridLayout,
+                           QLineEdit, QPushButton, QHBoxLayout, QMessageBox)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
+
+class Kalkulator(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_number = ''  # Buat nyimpen angka yang lagi diinput
+        self.stored_number = 0    # Buat nyimpen hasil operasi sebelumnya
+        self.last_operation = ''  # Buat nyimpen operasi terakhir
+        self.new_number = True    # Flag buat tau kapan mulai angka baru
+        self.interfejs()
+
+    def interfejs(self):
+        # Setup window utama
+        self.resize(300, 400)
+        self.setWindowTitle("Kalkulator Kece")
+
+        # Label utama
+        etykieta1 = QLabel("Calculator", self)
+
+        # Layout utama
+        layoutT = QGridLayout()
+        layoutT.addWidget(etykieta1, 0, 0)
+
+        # Display kalkulator
+        self.windowEdt = QLineEdit()
+        self.windowEdt.setReadOnly(True)
+        self.windowEdt.setAlignment(Qt.AlignRight)
+        self.windowEdt.setText('0')
+        self.windowEdt.setStyleSheet('''
+            QLineEdit {
+                font-size: 24px;
+                padding: 5px;
+                background: white;
+            }
+        ''')
+        layoutT.addWidget(self.windowEdt, 1, 0, 1, 4)
+
+        # Setup tombol angka
+        buttons = [
+            '7', '8', '9',
+            '4', '5', '6',
+            '1', '2', '3',
+            '0', '.', 'C'
+        ]
+
+        positions = [(i, j) for i in range(4) for j in range(3)]
+        
+        # Bikin grid tombol angka
+        for position, button in zip(positions, buttons):
+            btn = QPushButton(button)
+            btn.setStyleSheet('''
+                QPushButton {
+                    font-size: 18px;
+                    min-width: 50px;
+                    min-height: 50px;
+                }
+            ''')
+            if button != 'C':
+                btn.clicked.connect(lambda x, number=button: self.input_number(number))
+            else:
+                btn.clicked.connect(self.clear)
+            layoutT.addWidget(btn, position[0] + 2, position[1])
+
+        # Tombol operasi
+        operations = ['+', '-', '*', '/', '=']
+        for i, op in enumerate(operations):
+            btn = QPushButton(op)
+            btn.setStyleSheet('''
+                QPushButton {
+                    font-size: 18px;
+                    min-width: 50px;
+                    min-height: 50px;
+                    background-color: #FF9500;
+                    color: white;
+                }
+                QPushButton:pressed {
+                    background-color: #CC7700;
+                }
+            ''')
+            btn.clicked.connect(lambda x, operation=op: self.operation(operation))
+            layoutT.addWidget(btn, i + 2, 3)
+
+        # Tombol Close
+        koniecBtn = QPushButton("Close", self)
+        koniecBtn.clicked.connect(self.close)
+        layoutT.addWidget(koniecBtn, 7, 0, 1, 4)
+
+        self.setLayout(layoutT)
+        self.setWindowIcon(QIcon('kalkulator.png'))
+        self.show()
+
+    def input_number(self, number):
+        if self.new_number:
+            self.windowEdt.setText('')
+            self.new_number = False
+        
+        current = self.windowEdt.text()
+        
+        # Handle decimal point
+        if number == '.' and '.' in current:
+            return
+            
+        self.windowEdt.setText(current + number)
+        self.current_number = self.windowEdt.text()
+
+    def operation(self, op):
+        # Ambil angka dari display
+        try:
+            num = float(self.windowEdt.text())
+        except ValueError:
+            return
+
+        if op == '=':
+            if self.last_operation == '+':
+                self.stored_number += num
+            elif self.last_operation == '-':
+                self.stored_number -= num
+            elif self.last_operation == '*':
+                self.stored_number *= num
+            elif self.last_operation == '/':
+                try:
+                    self.stored_number /= num
+                except ZeroDivisionError:
+                    QMessageBox.critical(self, "Error", "Gabisa dibagi 0 bro!")
+                    self.clear()
+                    return
+            
+            self.windowEdt.setText(str(self.stored_number))
+            self.new_number = True
+            self.last_operation = ''
+            return
+
+        self.last_operation = op
+        self.stored_number = num
+        self.new_number = True
+
+    def clear(self):
+        self.windowEdt.setText('0')
+        self.current_number = ''
+        self.stored_number = 0
+        self.last_operation = ''
+        self.new_number = True
+
+    def closeEvent(self, event):
+        odp = QMessageBox.question(
+            self, 'Confirm Exit',
+            "Yakin mau keluar nih?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if odp == QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            self.close()
+
+if __name__ == '__main__':
+    import sys
+
+    app = QApplication(sys.argv)
+    okno = Kalkulator()
+    sys.exit(app.exec_())
